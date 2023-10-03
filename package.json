@@ -1,0 +1,16 @@
+{
+  "name": "drakermore",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "bun-types": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "archiver": "^6.0.1",
+    "jszip": "^3.10.1",
+    "zip-stream": "^5.0.1"
+  }
+}

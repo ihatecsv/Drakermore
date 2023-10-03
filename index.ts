@@ -2,6 +2,7 @@ import { serve } from 'bun';
 import JSZip from 'jszip';
 import { promises as fs } from 'fs';
 import crypto from 'crypto';
+import TOML from '@iarna/toml';
 
 const port = 3000;
 const publicHost = `http://localhost:${port}`
@@ -32,47 +33,54 @@ name=${modpack.name}
 }
 
 async function generatePackTOML(pack: any, indexHash: string): Promise<string> {
-    return `name = "${pack.name}"
-pack-format = "${pack.packTomlFormat}"
-
-[versions]
-minecraft = "${pack.minecraftVersion}"
-fabric = "${pack.fabricLoaderVersion}"
-
-[index]
-file = "index.toml"
-hash-format = "sha512"
-hash = "${indexHash}"
-`;
+    const tomlObject = {
+        name: pack.name,
+        "pack-format": pack.packTomlFormat,
+        versions: {
+            minecraft: pack.minecraftVersion,
+            fabric: pack.fabricLoaderVersion
+        },
+        index: {
+            file: "index.toml",
+            "hash-format": "sha512",
+            hash: indexHash
+        }
+    };
+    return TOML.stringify(tomlObject);
 }
 
 async function generateIndexTOML(modpackID: string, modJars: string[]): Promise<string> {
-    const modEntries = await Promise.all(modJars.map(async jar => {
+    const files = await Promise.all(modJars.map(async jar => {
         const modTOMLContent = await generateModTOML(modpackID, jar);
         const hash = crypto.createHash('sha512').update(modTOMLContent).digest('hex');
-        return `
-[[files]]
-file = "mods/${jar}.pw.toml"
-hash = "${hash}"
-metafile = true
-`;
+        return {
+            file: `mods/${jar}.pw.toml`,
+            hash: hash,
+            metafile: true
+        };
     }));
-    return `hash-format = "sha512"
-${modEntries.join('')}
-`.trim();
+
+    const tomlObject = {
+        "hash-format": "sha512",
+        files: files
+    };
+
+    return TOML.stringify(tomlObject);
 }
 
 async function generateModTOML(modpackID: string, modFilename: string): Promise<string> {
     const modPath = `./packs/${modpackID}/mods/${modFilename}`;
     const hash = await hashFile(modPath);
-    return `name="${modFilename.replace(".jar", "")}"
-filename="${modFilename}"
-
-[download]
-url = "${publicHost}/packs/${modpackID}/mods/${modFilename}"
-hash-format = "sha512"
-hash = "${hash}"
-`.trim();
+    const tomlObject = {
+        name: modFilename.replace(".jar", ""),
+        filename: modFilename,
+        download: {
+            url: `${publicHost}/packs/${modpackID}/mods/${modFilename}`,
+            "hash-format": "sha512",
+            hash: hash
+        }
+    };
+    return TOML.stringify(tomlObject);
 }
 
 serve({

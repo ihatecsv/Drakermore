@@ -7,7 +7,22 @@ import TOML from '@iarna/toml';
 const port = 3000;
 const publicHost = `http://localhost:${port}`
 
-async function loadPackJson(packId: string) {
+type Modpack = {
+    name: string;
+    packTomlFormat: string;
+    minecraftVersion: string;
+    fabricLoaderVersion: string;
+    mmcPack: {
+        components: {
+            dependencyOnly?: boolean;
+            uid: string;
+            version: string;
+        }[];
+        formatVersion: number;
+    };
+};
+
+async function loadPackJson(packId: string): Promise<Modpack> {
     const packPath = `./packs/${packId}/pack.json`;
     const packData = await fs.readFile(packPath, 'utf-8');
     return JSON.parse(packData);
@@ -24,7 +39,7 @@ async function hashFile(filename: string) {
     return hash.digest('hex');
 }
 
-function generateInstanceConfig(modpackID: string, modpack: any): string {
+function generateInstanceConfig(modpackID: string, modpack: Modpack): string {
     return `InstanceType=OneSix
 OverrideCommands=true
 PreLaunchCommand="$INST_JAVA" -jar packwiz-installer-bootstrap.jar ${publicHost}/packs/${modpackID}/packwiz/pack.toml
@@ -32,13 +47,13 @@ name=${modpack.name}
 `.trim();
 }
 
-async function generatePackTOML(pack: any, indexHash: string): Promise<string> {
+async function generatePackTOML(modpack: Modpack, indexHash: string): Promise<string> {
     const tomlObject = {
-        name: pack.name,
-        "pack-format": pack.packTomlFormat,
+        name: modpack.name,
+        "pack-format": modpack.packTomlFormat,
         versions: {
-            minecraft: pack.minecraftVersion,
-            fabric: pack.fabricLoaderVersion
+            minecraft: modpack.minecraftVersion,
+            fabric: modpack.fabricLoaderVersion
         },
         index: {
             file: "index.toml",
